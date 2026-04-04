@@ -1,0 +1,100 @@
+openapi: 3.0.3
+info:
+  title: Kiosk App API
+  description: REST API для информационного киоска. Отвечает за прием, хранение и выдачу текущего сообщения
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+
+tags:
+  - name: messages
+    description: Управление сообщением
+
+paths:
+  /messages:
+    post:
+      tags:
+        - messages
+      summary: Установить новое сообщение
+      description: Принимает новое сообщение от панели управления и сохраняет его как текущее
+      operationId: createMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageRequest"
+      responses:
+        "201":
+          description: Сообщение сохранено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Неверный формат запроса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/current:
+    get:
+      tags:
+        - messages
+      summary: Получить текущее сообщение
+      description: Возвращает актуальное сообщение для отображения на мониторе. Вызывается периодически по таймеру
+      operationId: getCurrentMessage
+      responses:
+        "200":
+          description: Текущее сообщение
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "204":
+          description: Сообщений еще нет
+
+components:
+  schemas:
+    MessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: '^\S.*'
+          example: Пример сообщения
+
+    MessageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        content:
+          type: string
+          example: Пример сообщения
+        createdAt:
+          type: string
+          format: date-time
+          example: 2025-04-04T12:00:00Z
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Поле content не может быть пустым
+        timestamp:
+          type: string
+          format: date-time
+          example: 2025-04-04T12:00:00Z

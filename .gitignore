@@ -49,7 +49,7 @@ Thumbs.db
 *.sw?
 
 # Environment / secrets
-.env
+kiosk-app-backend/.env
 .env.*
 !.env.example
 

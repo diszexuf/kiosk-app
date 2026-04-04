@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/message-init.sql
+      relativeToChangelogFile: false
