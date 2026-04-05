@@ -63,3 +63,6 @@ kiosk-app-backend/.env
 **/checksums.lock
 **/gc.properties
 **/cache.properties
+/admin-panel-frontend/.env
+/monitor-frontend/.env
+/.env

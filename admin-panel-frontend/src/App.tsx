@@ -1,54 +1,94 @@
-import { useState } from 'react';
-import { MessageField } from './components/MessageField';
-import { StatusMessage } from './components/StatusMessage';
-import {Spinner} from "./components/Spinner.tsx";
-import {useSendMessage} from "./hooks/useSendMessage.ts";
+import { useState } from 'react'
+import createClient from 'openapi-fetch'
+import type { paths } from './types/api'
 
-const MAX_LENGTH = 2000;
+const client = createClient<paths>({
+  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1',
+})
+
+const MAX_LENGTH = 2000
+
+type Status = 'idle' | 'loading' | 'success' | 'error'
 
 export default function App() {
-  const [content, setContent] = useState('');
-  const { send, status, errorMessage } = useSendMessage();
+  const [content, setContent] = useState('')
+  const [status, setStatus] = useState<Status>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
-  const handleSend = () => {
-    if (content.trim() && content.length <= MAX_LENGTH) {
-      send(content).then(() => setContent(''));
+  const isValid = content.trim().length > 0 && content.length <= MAX_LENGTH
+  const isLoading = status === 'loading'
+
+  const handleSend = async () => {
+    if (!isValid || isLoading) return
+
+    setStatus('loading')
+    setErrorMessage('')
+
+    const { error, response } = await client.POST('/messages', {
+      body: { content },
+    })
+
+    if (error || response.status !== 201) {
+      const msg = (error as { message?: string })?.message ?? 'Ошибка при отправке'
+      setStatus('error')
+      setErrorMessage(msg)
+      setTimeout(() => setStatus('idle'), 4000)
+      return
     }
-  };
+
+    setStatus('success')
+    setContent('')
+    setTimeout(() => setStatus('idle'), 3000)
+  }
 
   return (
-      <main className="min-h-svh flex items-center justify-center p-4">
-        <section className="w-full max-w-[560px] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-8 flex flex-col gap-6">
-          <header className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold tracking-tight">Панель управления</h1>
+      <main className="min-h-svh flex items-center justify-center p-4 bg-gray-50">
+        <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+
+          <div>
+            <h1 className="text-lg font-semibold">Информационный киоск</h1>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-sm">
+              <label htmlFor="message" className="text-gray-600">Сообщение</label>
+              <span className={content.length > MAX_LENGTH ? 'text-red-500' : 'text-gray-400'}>
+              {content.length} / {MAX_LENGTH}
+            </span>
             </div>
-            <p className="pl-12 text-sm text-[var(--text-secondary)]">Информационный киоск</p>
-          </header>
+            <textarea
+                id="message"
+                rows={6}
+                value={content}
+                onChange={e => setContent(e.target.value.trimStart())}
+                onBlur={e => setContent(e.target.value.trim())}
+                disabled={isLoading}
+                placeholder="Введите сообщение..."
+                className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none outline-none focus:border-gray-400 disabled:opacity-50"
+            />
+          </div>
 
-          <MessageField
-              value={content}
-              onChange={setContent}
-              maxLength={MAX_LENGTH}
-              disabled={status === 'loading'}
-              onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && handleSend()}
-          />
+          {status === 'success' && (
+              <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                Сообщение успешно отправлено
+              </p>
+          )}
 
-          {status !== 'idle' && (
-              <StatusMessage
-                  type={status === 'error' ? 'error' : 'success'}
-                  message={errorMessage || 'Сообщение отправлено'}
-              />
+          {status === 'error' && (
+              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {errorMessage}
+              </p>
           )}
 
           <button
               onClick={handleSend}
-              disabled={!content.trim() || content.length > MAX_LENGTH || status === 'loading'}
-              className="w-full py-3 bg-[var(--accent)] text-[var(--bg)] rounded-[var(--radius-md)] font-medium hover:opacity-90 disabled:opacity-30 transition-all flex justify-center items-center gap-2"
+              disabled={!isValid || isLoading}
+              className="w-full py-2.5 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-30 transition-colors"
           >
-            {status === 'loading' ? <Spinner /> : 'Отправить на монитор'}
+            {isLoading ? 'Отправка...' : 'Отправить на монитор'}
           </button>
-        </section>
+
+        </div>
       </main>
-  );
+  )
 }
